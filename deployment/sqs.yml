@@ -1,0 +1,59 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+Description: S3 Bucket
+
+Resources:
+##########################################################################
+#   SQS                                                                  #
+##########################################################################
+  MigrationSqsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      RedrivePolicy:
+        deadLetterTargetArn:
+          Fn::GetAtt:
+            - MigrationDLQSqsQueue
+            - Arn
+        maxReceiveCount: 1
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  MigrationDLQSqsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+Outputs:
+  MigrationSqsQueueName:
+    Description: SQS queue name
+    Value: !GetAtt MigrationSqsQueue.QueueName
+    Export:
+      Name: MigrationSqsQueueName
+  MigrationSqsQueueARN:
+    Description: SQS queue ARN
+    Value: !GetAtt MigrationSqsQueue.Arn
+    Export:
+      Name: MigrationSqsQueueARN
+  MigrationSqsQueueURL:
+    Description: SQS queue URL
+    Value: !Ref MigrationSqsQueue
+    Export:
+      Name: MigrationSqsQueueURL
+  MigrationDLQSqsQueueName:
+    Description: SQS queue name
+    Value: !GetAtt MigrationDLQSqsQueue.QueueName
+    Export:
+      Name: MigrationDLQSqsQueueName
+  MigrationDLQSqsQueueARN:
+    Description: SQS queue ARN
+    Value: !GetAtt MigrationDLQSqsQueue.Arn
+    Export:
+      Name: MigrationDLQSqsQueueARN
+  MigrationDLQSqsQueueURL:
+    Description: SQS queue URL
+    Value: !Ref MigrationDLQSqsQueue
+    Export:
+      Name: MigrationDLQSqsQueueURL

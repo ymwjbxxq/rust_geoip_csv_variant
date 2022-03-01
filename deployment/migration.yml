@@ -1,0 +1,120 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+##########################################################################
+#  Global values that are applied to all resources                       #
+##########################################################################
+Globals:
+  Function:
+    Architectures: ["arm64"]
+    Handler: bootstrap
+    Runtime: provided.al2
+    Environment:
+      Variables:
+        RUST_BACKTRACE: 1
+        RUST_LOG: info
+
+Resources:
+##########################################################################
+#   Migration Lambda Function                                            #
+##########################################################################
+  MigrationIPv4Function:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../build/migration
+      Timeout: 500
+      MemorySize: 10240
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - "s3:GetObject"
+              Resource:
+                - !ImportValue SourceBucketArn
+                - !Sub
+                  - "${SourceBucketArn}/*"
+                  - SourceBucketArn: !ImportValue SourceBucketArn
+            - Effect: Allow
+              Action:
+                - sqs:SendMessage
+              Resource: !ImportValue MigrationSqsQueueARN
+      Environment:
+        Variables:
+          BUCKET_NAME: !ImportValue SourceBucketName
+          SQS_URL: !ImportValue MigrationSqsQueueURL
+          IP_URL: GeoIP2-Country-Blocks-IPv4.csv
+          LOCATION_URL: GeoIP2-Country-Locations-en.csv
+      Tags:
+        Name: !Ref AWS::StackName
+
+  MigrationIPv6Function:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../build/migration
+      Timeout: 500
+      MemorySize: 10240
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - "s3:GetObject"
+              Resource:
+                - !ImportValue SourceBucketArn
+                - !Sub
+                  - "${SourceBucketArn}/*"
+                  - SourceBucketArn: !ImportValue SourceBucketArn
+            - Effect: Allow
+              Action:
+                - sqs:SendMessage
+              Resource: !ImportValue MigrationSqsQueueARN
+      Environment:
+        Variables:
+          BUCKET_NAME: !ImportValue SourceBucketName
+          SQS_URL: !ImportValue MigrationSqsQueueURL
+          IP_URL: GeoIP2-Country-Blocks-IPv6.csv
+          LOCATION_URL: GeoIP2-Country-Locations-en.csv
+      Tags:
+        Name: !Ref AWS::StackName
+
+##########################################################################
+#   Importing Lambda Function                                            #
+##########################################################################
+  ImportingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../build/importing
+      Timeout: 10
+      MemorySize: 1024
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:UpdateItem
+                - dynamodb:GetItem
+              Resource: 
+                - !ImportValue GeopIPv4TableArn
+                - !ImportValue GeopIPv6TableArn
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - sqs:ReceiveMessage
+              Resource: !ImportValue MigrationSqsQueueARN
+      Environment:
+        Variables:
+          IPv4_TABLE_NAME: !ImportValue GeopIPv4TableName
+          IPv6_TABLE_NAME: !ImportValue GeopIPv6TableName
+      Events:
+        MySQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !ImportValue MigrationSqsQueueARN
+            BatchSize: 10
+      Tags:
+        Name: !Ref AWS::StackName

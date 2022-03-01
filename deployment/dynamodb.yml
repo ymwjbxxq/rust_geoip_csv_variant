@@ -1,0 +1,66 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: 'AWS::Serverless-2016-10-31'
+Description: DynamoDb.
+
+
+Resources:
+##########################################################################
+#  DynamoDB                                                              #
+##########################################################################
+  GeopIPv4Table:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  GeopIPv6Table:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+Outputs:
+  GeopIPv4TableName:
+    Description: "DynamoDB GeopIP IPv4 Table Name"
+    Value: !Ref GeopIPv4Table
+    Export:
+      Name: GeopIPv4TableName
+  GeopIPv4TableArn:
+    Description: "DynamoDB GeopIP IPv4 Table ARN"
+    Value: !GetAtt GeopIPv4Table.Arn
+    Export:
+      Name: GeopIPv4TableArn
+  GeopIPv6TableName:
+    Description: "DynamoDB GeopIP IPv6 Table Name"
+    Value: !Ref GeopIPv6Table
+    Export:
+      Name: GeopIPv6TableName
+  GeopIPv6TableArn:
+    Description: "DynamoDB GeopIP IPv6 Table ARN"
+    Value: !GetAtt GeopIPv6Table.Arn
+    Export:
+      Name: GeopIPv6TableArn
