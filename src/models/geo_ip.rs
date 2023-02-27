@@ -1,11 +1,11 @@
-use crate::{dtos::{
-    country_blocks::CountryBlocks,
-    country_location::CountryLocation,
-}, utils::ip_helper::IpAddrExt};
+use crate::{
+    dtos::{country_blocks::CountryBlocks, country_location::CountryLocation},
+    utils::ip_helper::IpAddrExt,
+};
 use futures::StreamExt;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::{sync::{Arc}, collections::HashMap, str::FromStr};
+use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 #[derive(Debug, Deserialize, Serialize, Default, Clone)]
 pub struct GeoIP {
@@ -27,10 +27,8 @@ pub struct GeoIP {
 
 impl GeoIP {
     pub async fn generate_records(
-        result: (
-            Vec<CountryBlocks>,
-            Vec<CountryLocation>,
-        )) -> Vec<GeoIP> {
+        result: (Vec<CountryBlocks>, Vec<CountryLocation>),
+    ) -> Vec<GeoIP> {
         let country_blocks = result.0;
         let country_locations = location_hashmap(result.1);
         println!("IP detected {:?}", country_blocks.len());
@@ -51,42 +49,45 @@ impl GeoIP {
 }
 
 fn location_hashmap(my_array: Vec<CountryLocation>) -> HashMap<u64, CountryLocation> {
-    let result = my_array
-    .par_iter()
-    .map(|row| {
-        let mut m = HashMap::new();
-        m.insert(row.geoname_id, row.clone());
-        m
-    })
-    .flatten_iter()
-    .collect();
-
-    result
+    my_array
+        .par_iter()
+        .map(|row| {
+            let mut m = HashMap::new();
+            m.insert(row.geoname_id, row.clone());
+            m
+        })
+        .flatten_iter()
+        .collect()
 }
 
-fn generate_ip(country_block: &CountryBlocks, country_locations: Arc<HashMap<u64, CountryLocation>>) -> GeoIP {
-        let geoname_id = get_geoname_id(&country_block);
-        let location = get_location(geoname_id, country_locations);
-        let item = GeoIPBuilder::new(country_block.network.to_string(), geoname_id)
-            .registered_country_geoname_id(country_block.registered_country_geoname_id)
-            .represented_country_geoname_id(country_block.represented_country_geoname_id)
-            .is_anonymous_proxy(country_block.is_anonymous_proxy)
-            .locale_code(location.locale_code)
-            .continent_code(location.continent_code)
-            .continent_name(location.continent_name)
-            .country_iso_code(location.country_iso_code)
-            .country_name(location.country_name)
-            .is_in_european_union(location.is_in_european_union)
-            .build();
-        item
-    }
+fn generate_ip(
+    country_block: &CountryBlocks,
+    country_locations: Arc<HashMap<u64, CountryLocation>>,
+) -> GeoIP {
+    let geoname_id = get_geoname_id(country_block);
+    let location = get_location(geoname_id, country_locations);
+    GeoIPBuilder::new(country_block.network.to_string(), geoname_id)
+        .registered_country_geoname_id(country_block.registered_country_geoname_id)
+        .represented_country_geoname_id(country_block.represented_country_geoname_id)
+        .is_anonymous_proxy(country_block.is_anonymous_proxy)
+        .locale_code(location.locale_code)
+        .continent_code(location.continent_code)
+        .continent_name(location.continent_name)
+        .country_iso_code(location.country_iso_code)
+        .country_name(location.country_name)
+        .is_in_european_union(location.is_in_european_union)
+        .build()
+}
 
-fn get_location(geoname_id: u64, country_locations: Arc<HashMap<u64, CountryLocation>>) -> CountryLocation {
+fn get_location(
+    geoname_id: u64,
+    country_locations: Arc<HashMap<u64, CountryLocation>>,
+) -> CountryLocation {
     let location = country_locations.get(&geoname_id);
     match location {
         Some(location) => location.clone(),
         None => CountryLocation {
-            geoname_id: geoname_id,
+            geoname_id,
             locale_code: None,
             continent_code: None,
             continent_name: None,
@@ -98,14 +99,11 @@ fn get_location(geoname_id: u64, country_locations: Arc<HashMap<u64, CountryLoca
 }
 
 fn get_geoname_id(country_block: &CountryBlocks) -> u64 {
-    let geoname_id;
     if country_block.geoname_id.is_some() {
-        geoname_id = country_block.geoname_id.unwrap();
+        country_block.geoname_id.unwrap()
     } else {
-        geoname_id = country_block.registered_country_geoname_id.unwrap();
+        country_block.registered_country_geoname_id.unwrap()
     }
-
-    geoname_id
 }
 
 #[derive(Debug)]
@@ -152,20 +150,20 @@ impl GeoIPBuilder {
             }
         } else {
             GeoIPBuilder {
-              network: network,
-              geoname_id: geoname_id,
-              registered_country_geoname_id: None,
-              represented_country_geoname_id: None,
-              is_anonymous_proxy: false,
-              locale_code: None,
-              continent_code: None,
-              continent_name: None,
-              country_iso_code: None,
-              country_name: None,
-              is_in_european_union: false,
-              cidr_first_address: 0,
-              cidr_last_address: 0,
-              is_ipv4: false,
+                network,
+                geoname_id,
+                registered_country_geoname_id: None,
+                represented_country_geoname_id: None,
+                is_anonymous_proxy: false,
+                locale_code: None,
+                continent_code: None,
+                continent_name: None,
+                country_iso_code: None,
+                country_name: None,
+                is_in_european_union: false,
+                cidr_first_address: 0,
+                cidr_last_address: 0,
+                is_ipv4: false,
             }
         }
     }

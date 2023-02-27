@@ -26,17 +26,13 @@ impl IPHelper {
     }
 
     pub fn first_octet_of_first_address(cidr: &str) -> String {
-        let cidr = cidr::IpCidr::from_str(&cidr).unwrap();
-        let first_octet = cidr.first_address().first_octet();
-        
-        first_octet
+        let cidr = cidr::IpCidr::from_str(cidr).unwrap();
+        cidr.first_address().first_octet()
     }
 
     pub fn first_octet_of_last_address(cidr: &str) -> String {
-        let cidr = cidr::IpCidr::from_str(&cidr).unwrap();
-        let first_octet = cidr.last_address().first_octet();
-        
-        first_octet
+        let cidr = cidr::IpCidr::from_str(cidr).unwrap();
+        cidr.last_address().first_octet()
     }
 }
 
@@ -49,17 +45,14 @@ impl IpAddrExt for IpAddr {
     fn first_octet(self) -> String {
         let ip_bytes = IPHelper::ip_to_bytes(self);
         let mut result: u64 = 0;
-        for octet in ip_bytes.iter() {
+        if let Some(octet) = ip_bytes.first() {
             result = result * 1000 + *octet as u64;
-            break;
         }
         result.to_string()
     }
 
     fn to_u64(self) -> u64 {
         let ip_to_bytes = IPHelper::ip_to_bytes(self);
-        let u64_number =  IPHelper::byte_to_u64(ip_to_bytes);
-
-        u64_number
+        IPHelper::byte_to_u64(ip_to_bytes)
     }
 }

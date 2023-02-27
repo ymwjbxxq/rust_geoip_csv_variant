@@ -7,9 +7,9 @@ pub struct CountryBlocks {
 
     #[serde(deserialize_with = "csv::invalid_option")]
     pub geoname_id: Option<u64>,
-    
+
     #[serde(deserialize_with = "csv::invalid_option")]
-    pub registered_country_geoname_id:  Option<u64>,
+    pub registered_country_geoname_id: Option<u64>,
 
     #[serde(deserialize_with = "csv::invalid_option")]
     pub represented_country_geoname_id: Option<u64>,

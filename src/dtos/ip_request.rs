@@ -1,5 +1,5 @@
-use std::net::IpAddr;
 use serde::Deserialize;
+use std::net::IpAddr;
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct IPRequest {
