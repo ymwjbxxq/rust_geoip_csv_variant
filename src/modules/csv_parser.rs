@@ -1,5 +1,4 @@
 use tokio_stream::StreamExt;
-use tokio_util::io::StreamReader;
 
 type E = Box<dyn std::error::Error + Sync + Send + 'static>;
 
@@ -17,10 +16,7 @@ impl CSVParser {
             .send()
             .await?
             .body
-            .map(|result| result.map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e)));
-
-        // Convert the stream into an AsyncRead
-        let stream_reader = StreamReader::new(stream);
+            .into_async_read();
 
         println!("reading");
         // Create a CSV reader
@@ -30,7 +26,7 @@ impl CSVParser {
             .double_quote(false)
             .escape(Some(b'\\'))
             .flexible(true)
-            .create_deserializer(stream_reader);
+            .create_deserializer(stream);
 
         // Iterate over the CSV rows
         let mut records = csv_reader.deserialize::<_>();
@@ -55,18 +51,18 @@ pub struct CSV {
 pub struct CSVBuilder {
     aws_client: aws_sdk_s3::Client,
     bucket_name: Option<String>,
-    key: Option<String>
+    key: Option<String>,
 }
 
 impl CSVBuilder {
     pub fn new(aws_client: &aws_sdk_s3::Client) -> CSVBuilder {
-        CSVBuilder {
+        Self {
             aws_client: aws_client.clone(),
             bucket_name: None,
-            key: None
+            key: None,
         }
     }
-  
+
     pub fn bucket(mut self, name: String) -> CSVBuilder {
         self.bucket_name = Some(name);
         self
@@ -78,10 +74,10 @@ impl CSVBuilder {
     }
 
     pub fn build(self) -> CSV {
-        CSV { 
+        CSV {
             aws_client: self.aws_client,
-            bucket_name: self.bucket_name.expect(&"BUCKET_NAME bucket must be set".to_string()),
-            key: self.key.expect(&"KEY bucket must be set".to_string())
+            bucket_name: self.bucket_name.expect("BUCKET_NAME bucket must be set"),
+            key: self.key.expect("KEY bucket must be set"),
         }
     }
 }

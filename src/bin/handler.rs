@@ -1,55 +1,52 @@
-use aws_config::{RetryConfig, TimeoutConfig};
 use geo_ip::{
     dtos::ip_request::IPRequest,
     queries::get_ip::{GetIP, GetIPQuery},
     utils::{api_helper::ApiHelper, ip_helper::IpAddrExt},
 };
-use lambda_http::{http::StatusCode, service_fn, Error, IntoResponse, Request};
+use lambda_http::{http::StatusCode, run, service_fn, Error, IntoResponse, Request};
 use serde_json::json;
-use std::{net::IpAddr, str::FromStr, time::Duration};
+use std::{net::IpAddr, str::FromStr};
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     tracing_subscriber::fmt()
-        // this needs to be set to false, otherwise ANSI color codes will
-        // show up in a confusing manner in CloudWatch logs.
         .with_ansi(false)
-        // disabling time is handy because CloudWatch will add the ingestion time.
         .without_time()
+        .with_max_level(tracing_subscriber::filter::LevelFilter::INFO)
         .init();
-    let config = aws_config::from_env()
-        .retry_config(RetryConfig::new().with_max_attempts(10))
-        .timeout_config(
-            TimeoutConfig::new()
-                .with_read_timeout(Some(Duration::from_secs(1)))
-                .with_connect_timeout(Some(Duration::from_secs(1)))
-                .with_api_call_timeout(Some(Duration::from_secs(1))),
-        )
-        .load()
-        .await;
+
+    let config = aws_config::load_from_env().await;
     let dynamodb_client = aws_sdk_dynamodb::Client::new(&config);
-    lambda_http::run(service_fn(|event: Request| {
-        execute(&dynamodb_client, event)
+
+    run(service_fn(|event: Request| {
+        function_handler(&dynamodb_client, event)
     }))
-    .await?;
-    Ok(())
+    .await
 }
 
-pub async fn execute(client: &aws_sdk_dynamodb::Client, event: Request) -> Result<impl IntoResponse, Error> {
+pub async fn function_handler(
+    client: &aws_sdk_dynamodb::Client,
+    event: Request,
+) -> Result<impl IntoResponse, Error> {
     println!("{:?}", &event);
     let ip_address = event.headers().get("x-forwarded-for");
     if let Some(ip_address) = ip_address {
-        let ip_address = IpAddr::from_str(ip_address.to_str().unwrap()).unwrap();
+        let ip_address = IpAddr::from_str(ip_address.to_str()?).unwrap();
         let request = IPRequest {
             ip_address,
             ip_address_decimal: ip_address.to_u64(),
         };
 
-        let response = GetIP::new().await.execute(client, request).await?;
-        if let Some(response) = response {
+        let country_code = GetIP::new(client)
+            .await
+            .country_code(request)
+            .await
+            .ok()
+            .and_then(|response| response);
+        if let Some(country_code) = country_code {
             return Ok(ApiHelper::response(
                 StatusCode::OK,
-                json!({"countrycode": response.country_code}).to_string(),
+                json!({ "countrycode": country_code }).to_string(),
             ));
         }
     }
